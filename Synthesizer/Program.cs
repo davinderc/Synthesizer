@@ -8,45 +8,65 @@ using System.Windows.Threading;
 
 namespace Synthesizer
 {
+    public class AudioPlaybackEngine : IDisposable
+    {
+        private readonly IWavePlayer outputDevice;
+        private readonly MixingSampleProvider mixer;
+
+        public AudioPlaybackEngine(int sampleRate = 44100, int channelCount = 2)
+        {
+            outputDevice = new WaveOutEvent();
+            mixer = new MixingSampleProvider(WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, channelCount));
+            mixer.ReadFully = true;
+            outputDevice.Init(mixer);
+            outputDevice.Play();
+        }
+
+        public void PlaySound(ISampleProvider note)
+        {
+            mixer.AddMixerInput(note);
+        }
+
+        public void Dispose()
+        {
+            outputDevice.Dispose();
+        }
+        public static readonly AudioPlaybackEngine Instance = new AudioPlaybackEngine(44100, 2);
+    }
+
+    public class KeyboardListener
+    {
+        public string lastKey;
+
+        private void OnKeyDownHandler(object sender, KeyboardEventHandler e)
+        {
+            //if(e.)
+        }
+    }
+
     public class Synth
     {
-        private double frequency = 440;
-        private double duration = 0.5;
         private int msDuration = 10;
         private double gain = 0.1;
         private ISampleProvider waveForm;
 
-        public double Frequency
-        {
-            get => frequency; 
-            set => frequency = value;
-        }
-        public double Duration
-        {
-            get => duration;
-            set => duration = value;
-        }
+        public double Frequency { get; set; } = 440;
+        public double Duration { get; set; } = 0.5;
 
         public Synth()
         {
             this.waveForm = new SignalGenerator()
             {
                 Gain = this.gain,
-                Frequency = this.frequency,
+                Frequency = this.Frequency,
                 Type = SignalGeneratorType.Sin
-            }.Take(TimeSpan.FromSeconds(this.duration));
+            }.Take(TimeSpan.FromSeconds(this.Duration));
+
         }
 
         public void PlayTone()
         {
-            var waveOut = new WaveOutEvent();
-            waveOut.Init(this.waveForm);
-            waveOut.Play();
-            while (waveOut.PlaybackState == PlaybackState.Playing)
-            {
-                Thread.Sleep(this.msDuration);
-            }
-            waveOut.Dispose();
+            AudioPlaybackEngine.Instance.PlaySound(this.waveForm);
         }
 
         public void GenerateWaveform()
@@ -54,9 +74,9 @@ namespace Synthesizer
             var sineWave = new SignalGenerator()
             {
                 Gain = this.gain,
-                Frequency = this.frequency,
+                Frequency = this.Frequency,
                 Type = SignalGeneratorType.Sin
-            }.Take(TimeSpan.FromSeconds(this.duration));
+            }.Take(TimeSpan.FromSeconds(this.Duration));
             this.waveForm = sineWave;
         }
     }
