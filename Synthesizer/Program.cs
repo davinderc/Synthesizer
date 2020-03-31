@@ -1,107 +1,139 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Windows.Input;
-using System.Threading;
-using System.Media;
-using NAudio.Wave;
+﻿using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using System;
+using System.IO;
+using System.Threading;
+using System.Windows.Input;
+using System.Windows.Threading;
 
 namespace Synthesizer
 {
+    public class Synth
+    {
+        private double frequency = 440;
+        private double duration = 0.5;
+        private int msDuration = 10;
+        private double gain = 0.1;
+        private ISampleProvider waveForm;
+
+        public double Frequency
+        {
+            get => frequency; 
+            set => frequency = value;
+        }
+        public double Duration
+        {
+            get => duration;
+            set => duration = value;
+        }
+
+        public Synth()
+        {
+            this.waveForm = new SignalGenerator()
+            {
+                Gain = this.gain,
+                Frequency = this.frequency,
+                Type = SignalGeneratorType.Sin
+            }.Take(TimeSpan.FromSeconds(this.duration));
+        }
+
+        public void PlayTone()
+        {
+            var waveOut = new WaveOutEvent();
+            waveOut.Init(this.waveForm);
+            waveOut.Play();
+            while (waveOut.PlaybackState == PlaybackState.Playing)
+            {
+                Thread.Sleep(this.msDuration);
+            }
+            waveOut.Dispose();
+        }
+
+        public void GenerateWaveform()
+        {
+            var sineWave = new SignalGenerator()
+            {
+                Gain = this.gain,
+                Frequency = this.frequency,
+                Type = SignalGeneratorType.Sin
+            }.Take(TimeSpan.FromSeconds(this.duration));
+            this.waveForm = sineWave;
+        }
+    }
     class Program
     {
         [STAThread]
-        static void Main(string[] args)
+        static void Main()
         {
+            var synth = new Synth();
+            bool playKey = false;
+            if (File.Exists("key_config.json"))
+            {
+                var configFileContent = File.ReadAllLines("key_config.json");
+                //var jsonConfig = JsonParser.FromJson(configFileContent); // need to debug this
+            }
+            
             while (!Keyboard.IsKeyDown(Key.Escape))
             {
                 // TODO: Read keyboard inputs in non-blocking manner
-                SoundPlayer player = new SoundPlayer();
-                double frequency = 440;
-                double duration = 0.5;
-                int ms_duration = Convert.ToInt32(duration * 1000);
-                bool play_key = false;
-                if (Keyboard.IsKeyDown(Key.A))
+               if (Keyboard.IsKeyDown(Key.A))
                 {
                     // play note or set flag to play note
-                    Console.WriteLine($"Key pressed: A");
-                    frequency = 261.63;
-                    play_key = true;
+                    Console.WriteLine("Key pressed: A");
+                    synth.Frequency = 261.63;
+                    playKey = true;
                 }
                 if (Keyboard.IsKeyDown(Key.S))
                 {
                     // play note or set flag to play note
-                    Console.WriteLine($"Key pressed: S");
-                    frequency = 293.66;
-                    play_key = true;
+                    Console.WriteLine("Key pressed: S");
+                    synth.Frequency = 293.66;
+                    playKey = true;
                 }
                 if (Keyboard.IsKeyDown(Key.D))
                 {
                     // play note or set flag to play note
-                    Console.WriteLine($"Key pressed: D");
-                    frequency = 329.63;
-                    play_key = true;
+                    Console.WriteLine("Key pressed: D");
+                    synth.Frequency = 329.63;
+                    playKey = true;
                 }
                 if (Keyboard.IsKeyDown(Key.F))
                 {
                     // play note or set flag to play note
-                    Console.WriteLine($"Key pressed: F");
-                    frequency = 349.23;
-                    play_key = true;
+                    Console.WriteLine("Key pressed: F");
+                    synth.Frequency = 349.23;
+                    playKey = true;
                 }
                 if (Keyboard.IsKeyDown(Key.Y))
                 {
                     // play note or set flag to play note
-                    Console.WriteLine($"Key pressed: Y");
-                    frequency = 392.00;
-                    play_key = true;
+                    Console.WriteLine("Key pressed: Y");
+                    synth.Frequency = 392.00;
+                    playKey = true;
                 }
                 if (Keyboard.IsKeyDown(Key.X))
                 {
                     // play note or set flag to play note
-                    Console.WriteLine($"Key pressed: X");
-                    frequency = 440.00;
-                    play_key = true;
+                    Console.WriteLine("Key pressed: X");
+                    synth.Frequency = 440.00;
+                    playKey = true;
                 }
                 if (Keyboard.IsKeyDown(Key.C))
                 {
                     // play note or set flag to play note
-                    Console.WriteLine($"Key pressed: C");
-                    frequency = 493.88;
-                    play_key = true;
+                    Console.WriteLine("Key pressed: C");
+                    synth.Frequency = 493.88;
+                    playKey = true;
                 }
-                if (play_key)
+                if (playKey)
                 {
-                    ISampleProvider sineWave = generateWaveform(frequency, duration);
-                    playTone(sineWave, ms_duration);
-                    play_key = false;
+                    //ISampleProvider sineWave = GenerateWaveform(frequency, duration);
+                    //PlayTone(sineWave, msDuration);
+                    playKey = false;
+                    synth.GenerateWaveform();
+                    synth.PlayTone();
                 }
             }            
-        }
-
-        private static ISampleProvider generateWaveform(double frequency, double duration)
-        {
-            ISampleProvider sineWave = new SignalGenerator()
-            {
-                Gain = 0.1,
-                Frequency = frequency,
-                Type = SignalGeneratorType.Sin
-            }.Take(TimeSpan.FromSeconds(duration));
-            return sineWave;
-        }
-
-        private static void playTone(ISampleProvider sineWave, int duration)
-        {
-            using (var waveOut = new WaveOutEvent())
-            {
-                waveOut.Init(sineWave);
-                waveOut.Play();
-                while (waveOut.PlaybackState == PlaybackState.Playing)
-                {
-                    Thread.Sleep(duration);
-                }
-            }
         }
     }
 }
